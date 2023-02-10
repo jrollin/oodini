@@ -1,13 +1,11 @@
 # Oodini server
 
+[![Rust](https://github.com/jrollin/oodini/actions/workflows/ci.yml/badge.svg)](https://github.com/jrollin/oodini/actions/workflows/ci.yml)
 
-WIP 
+A Rust project to provide fake data and practice 
 
+Nb: Used as example for Rust articles on [my website](https://www.julienrollin.com)
 
-A Rust server to provide convenient fake data 
-
-
-Tokio stack 
-
-* hyper.rs
+Stack :
+* [Axum](https://github.com/tokio-rs/axum) as server
 
