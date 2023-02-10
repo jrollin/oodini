@@ -6,36 +6,39 @@ on: push
 
 jobs:
 
-  test_phaser:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - name: Update local toolchain
-        run: |
-          rustup update
-          rustup component add clippy
-          rustup install nightly          
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
 
-      - name: Toolchain info
-        run: |
-          cargo --version --verbose
-          rustc --version
-          cargo clippy --version          
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
       - name: Lint
         run: |
-          cd phaser
-          cargo fmt -- --check
-          cargo clippy -- -D warnings          
+          cargo clippy -- -D warnings   
 
       - name: Test
         run: |
-          cd phaser
           cargo check
           cargo test --all          
 
       - name: Build
         run: |
-          cd phaser
           cargo build --release          
