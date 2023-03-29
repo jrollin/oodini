@@ -1,53 +1,61 @@
-use dotenv::dotenv;
 use std::net::SocketAddr;
 
-use axum::{
-    extract::Path,
-    http::StatusCode,
-    response::{Html, IntoResponse},
-    routing::get,
-    Router,
-};
+use axum::Router;
+use oodini::routes;
+use tokio::signal;
+use tower_http::trace::TraceLayer;
+use tracing::info;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
-    // loads the environment variables from the ".env" file.
-    dotenv().ok();
-    // get listening port
-    let port = std::env::var("PORT").unwrap_or("3000".to_string());
-    // ensure port is valid type
-    let port: u16 = port.parse().expect("Port should be valid range");
+    // start tracing - level set by either RUST_LOG env variable or defaults to debug
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "oodini=debug".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    info!("starting application");
     // build our application with a route
     let app = Router::new()
-        .route("/", get(handler))
-        .route("/hello/:name", get(hello_handler))
-        .route("/status/:status", get(status_handler));
-    // run it
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    println!("listening on {addr}");
+        .merge(routes::html::router())
+        .layer(TraceLayer::new_for_http());
+    // add a fallback service for handling routes to unknown paths
+    let (host, port) = oodini::config::from_env();
+    let addr = SocketAddr::new(host.into(), port);
+    info!("listening on {addr}");
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
 }
 
-async fn handler() -> Html<&'static str> {
-    Html("Hello World !")
-}
+// notify os that process will stop
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
 
-async fn hello_handler(Path(name): Path<String>) -> impl IntoResponse {
-    let greeting = name.as_str();
-    let hello = String::from("Hello ");
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
 
-    (StatusCode::OK, Html(hello + greeting))
-}
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
 
-async fn status_handler(Path(name): Path<String>) -> impl IntoResponse {
-    match name.as_str() {
-        "400" => (StatusCode::NOT_FOUND, Html("Not found".to_string())),
-        _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Html("Internal server error".to_string()),
-        ),
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
     }
+
+    info!("signal received, starting graceful shutdown");
 }
