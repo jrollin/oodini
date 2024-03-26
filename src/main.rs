@@ -1,14 +1,15 @@
 use std::net::SocketAddr;
 
+use anyhow::Result;
 use axum::Router;
-use oodini::routes;
-use tokio::signal;
+use oodini::routes::{self, core::handler_404};
+use tokio::{net::TcpListener, signal};
 use tower_http::trace::TraceLayer;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     // start tracing - level set by either RUST_LOG env variable or defaults to debug
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
@@ -18,19 +19,24 @@ async fn main() {
         .init();
 
     info!("starting application");
+
     // build our application with a route
     let app = Router::new()
-        .merge(routes::html::router())
+        .nest("/", routes::core::router().await)
+        .nest("/api", routes::rest::router().await)
+        .fallback(handler_404)
         .layer(TraceLayer::new_for_http());
+
     // add a fallback service for handling routes to unknown paths
     let (host, port) = oodini::config::from_env();
     let addr = SocketAddr::new(host.into(), port);
-    info!("listening on {addr}");
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = TcpListener::bind(addr).await?;
+    info!("Listening on {addr}");
+    axum::serve(listener, app.into_make_service())
         .with_graceful_shutdown(shutdown_signal())
-        .await
-        .unwrap();
+        .await?;
+
+    Ok(())
 }
 
 // notify os that process will stop
