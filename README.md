@@ -6,8 +6,8 @@
 Used as example for Rust articles on [my website](https://www.julienrollin.com).
 
 Stack :
-* [Tokio](https://tokio.rs/)
-* [Axum](https://github.com/tokio-rs/axum)  
-* [Tower](https://github.com/tower-rs/tower)
-* [Tracing](https://github.com/tokio-rs/tracing)
 
+- [Tokio](https://tokio.rs/)
+- [Axum](https://github.com/tokio-rs/axum)
+- [Tower](https://github.com/tower-rs/tower)
+- [Tracing](https://github.com/tokio-rs/tracing)
