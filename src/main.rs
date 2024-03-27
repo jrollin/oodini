@@ -1,8 +1,8 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
-use axum::Router;
-use oodini::routes::{self, core::handler_404};
+use axum::{http::StatusCode, response::IntoResponse, Router};
+use oodini::routes;
 use tokio::{net::TcpListener, signal};
 use tower_http::trace::TraceLayer;
 use tracing::info;
@@ -22,8 +22,7 @@ async fn main() -> Result<()> {
 
     // build our application with a route
     let app = Router::new()
-        .nest("/", routes::core::router().await)
-        .nest("/api", routes::rest::router().await)
+        .nest("/", routes::html::router().await)
         .fallback(handler_404)
         .layer(TraceLayer::new_for_http());
 
@@ -37,6 +36,11 @@ async fn main() -> Result<()> {
         .await?;
 
     Ok(())
+}
+
+// fallback route
+async fn handler_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "Nothing here..")
 }
 
 // notify os that process will stop

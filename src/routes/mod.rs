@@ -1,2 +1,1 @@
-pub mod core;
-pub mod rest;
+pub mod html;
