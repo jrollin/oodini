@@ -1,6 +1,6 @@
 name: CI
 
-# This workflow run tests and build for each push
+# This workflow runs tests and build for each push
 
 on: push
 
@@ -9,36 +9,35 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: nightly
-          override: true
           components: rustfmt, clippy
 
       - name: Set up cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         continue-on-error: false
         with:
           path: |
             ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
+            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      - name: Format
+        run: cargo fmt --all --check
+
       - name: Lint
-        run: |
-          cargo clippy -- -D warnings   
+        run: cargo clippy -- -D warnings
 
       - name: Test
         run: |
           cargo check
-          cargo test --all          
+          cargo test --all
 
       - name: Build
-        run: |
-          cargo build --release          
+        run: cargo build --release

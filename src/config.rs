@@ -1,4 +1,4 @@
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use std::net::Ipv4Addr;
 
 pub fn from_env() -> (Ipv4Addr, u16) {

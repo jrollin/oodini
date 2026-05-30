@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
 
     // build our application with a route
     let app = Router::new()
-        .nest("/", routes::html::router().await)
+        .merge(routes::html::router().await)
         .fallback(handler_404)
         .layer(TraceLayer::new_for_http());
 
